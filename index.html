@@ -11,7 +11,24 @@
     <h1 class="text-2xl font-bold text-center mb-4">Fetch LinkedIn Jobs</h1>
 
     <form id="jobForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <!-- Required -->
+      <!-- Google Sheet ID -->
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium mb-1">Google Sheet ID *</label>
+        <input required name="sheet_id" type="text" placeholder="e.g., 1A2B3C...xyz"
+               class="w-full border rounded-lg p-2"/>
+        <p class="text-xs text-gray-500 mt-1">
+          Tip: The Sheet ID is the long string in your Google Sheets URL between <code>/d/</code> and <code>/edit</code>.
+        </p>
+      </div>
+
+      <!-- (Optional) Sheet Name -->
+      <div>
+        <label class="block text-sm font-medium mb-1">Sheet Name (tab)</label>
+        <input name="sheet_name" type="text" placeholder="Jobs" value="Sheet1"
+               class="w-full border rounded-lg p-2"/>
+      </div>
+
+      <!-- Required Field -->
       <div class="md:col-span-2">
         <label class="block text-sm font-medium mb-1">Field *</label>
         <input required name="field" type="text" placeholder="e.g., Digital Marketing"
@@ -33,56 +50,14 @@
                class="w-full border rounded-lg p-2"/>
       </div>
 
-      <!-- Pagination -->
-      <div>
-        <label class="block text-sm font-medium mb-1">Page</label>
-        <input name="page" type="number" min="1" value="1"
-               class="w-full border rounded-lg p-2"/>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium mb-1">Count (1–49)</label>
-        <input name="count" type="number" min="1" max="49" value="20"
-               class="w-full border rounded-lg p-2"/>
-      </div>
-
-      <!-- Sort By -->
+      <!-- Sort By (friendly labels, same API values) -->
       <div>
         <label class="block text-sm font-medium mb-1">Sort By</label>
         <select name="sort_by" class="w-full border rounded-lg p-2">
           <option value="">(default)</option>
-          <option value="relevance">relevance</option>
-          <option value="day">day</option>
-          <option value="week">week</option>
-          <option value="month">month</option>
-        </select>
-      </div>
-
-      <!-- Job Type -->
-      <div>
-        <label class="block text-sm font-medium mb-1">Job Type</label>
-        <select name="job_type" class="w-full border rounded-lg p-2">
-          <option value="">Any</option>
-          <option value="fulltime">fulltime</option>
-          <option value="parttime">parttime</option>
-          <option value="contract">contract</option>
-          <option value="internship">internship</option>
-          <option value="temporary">temporary</option>
-          <option value="volunteer">volunteer</option>
-        </select>
-      </div>
-
-      <!-- Experience Level -->
-      <div>
-        <label class="block text-sm font-medium mb-1">Experience Level</label>
-        <select name="exp_level" class="w-full border rounded-lg p-2">
-          <option value="">Any</option>
-          <option value="internship">internship</option>
-          <option value="entry_level">entry_level</option>
-          <option value="associate">associate</option>
-          <option value="mid_senior_level">mid_senior_level</option>
-          <option value="director">director</option>
-          <option value="executive">executive</option>
+          <option value="day">Last 24 hours</option>
+          <option value="week">Last 1 week</option>
+          <option value="month">Last 1 month</option>
         </select>
       </div>
 
@@ -97,12 +72,45 @@
         </select>
       </div>
 
-      <!-- Company Filter -->
+      <!-- Job Type (multi-select) -->
       <div class="md:col-span-2">
+        <label class="block text-sm font-medium mb-1">Job Type (multi-select)</label>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="flex items-center gap-2"><input type="checkbox" name="job_types" value="fulltime"> Full-time</label>
+          <label class="flex items-center gap-2"><input type="checkbox" name="job_types" value="parttime"> Part-time</label>
+          <label class="flex items-center gap-2"><input type="checkbox" name="job_types" value="contract"> Contract</label>
+          <label class="flex items-center gap-2"><input type="checkbox" name="job_types" value="internship"> Internship</label>
+          <label class="flex items-center gap-2"><input type="checkbox" name="job_types" value="temporary"> Temporary</label>
+          <label class="flex items-center gap-2"><input type="checkbox" name="job_types" value="volunteer"> Volunteer</label>
+        </div>
+      </div>
+
+      <!-- Experience Level (multi-select) -->
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium mb-1">Experience Level (multi-select)</label>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="flex items-center gap-2"><input type="checkbox" name="exp_levels" value="internship"> Internship</label>
+          <label class="flex items-center gap-2"><input type="checkbox" name="exp_levels" value="entry_level"> Entry level</label>
+          <label class="flex items-center gap-2"><input type="checkbox" name="exp_levels" value="associate"> Associate</label>
+          <label class="flex items-center gap-2"><input type="checkbox" name="exp_levels" value="mid_senior_level"> Mid–Senior</label>
+          <label class="flex items-center gap-2"><input type="checkbox" name="exp_levels" value="director"> Director</label>
+          <label class="flex items-center gap-2"><input type="checkbox" name="exp_levels" value="executive"> Executive</label>
+        </div>
+      </div>
+
+      <!-- Total Records -->
+      <div>
+        <label class="block text-sm font-medium mb-1">Total Records</label>
+        <input name="total_records" type="number" min="1" max="500" value="50"
+               class="w-full border rounded-lg p-2"/>
+      </div>
+
+      <!-- Company Filter -->
+      <!-- <div class="md:col-span-2">
         <label class="block text-sm font-medium mb-1">Company Filter</label>
         <input name="filter_by_company" type="text" placeholder="e.g., Google, Meta"
                class="w-full border rounded-lg p-2"/>
-      </div>
+      </div> -->
 
       <div class="md:col-span-2">
         <button type="submit"
@@ -140,13 +148,20 @@
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
 
-      // Build params (skip empty)
       const formData = new FormData(this);
       const params = {};
       formData.forEach((value, key) => {
+        if (key === 'job_types' || key === 'exp_levels') return; // collect below
         const v = String(value || '').trim();
         if (v) params[key] = v;
       });
+
+      // Collect multi-select checkboxes into arrays
+      params.job_types = Array.from(document.querySelectorAll('input[name="job_types"]:checked')).map(i => i.value);
+      params.exp_levels = Array.from(document.querySelectorAll('input[name="exp_levels"]:checked')).map(i => i.value);
+
+      // Coerce numeric fields
+      if (params.total_records) params.total_records = Number(params.total_records);
 
       resultEl.innerText = "Fetching jobs...";
       tableWrap.classList.add('hidden');
@@ -180,7 +195,6 @@
           `).join('');
           tableWrap.classList.remove('hidden');
         }
-
       } catch (err) {
         resultEl.innerText = `❌ Error: ${err.message}`;
       }
