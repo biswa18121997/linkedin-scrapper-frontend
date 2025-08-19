@@ -11,15 +11,12 @@
     <h1 class="text-2xl font-bold text-center mb-4">Fetch LinkedIn Jobs</h1>
 
     <form id="jobForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <!-- Google Sheet URL or ID (frontend will extract ID; backend unchanged) -->
+      <!-- Google Sheet URL or ID -->
       <div class="md:col-span-2">
         <label class="block text-sm font-medium mb-1">Google Sheet (URL or ID) *</label>
         <input required id="sheetInput" name="sheet_id" type="text"
                placeholder="Paste full URL or ID (e.g. https://docs.google.com/spreadsheets/d/1AbC.../edit)"
                class="w-full border rounded-lg p-2"/>
-        <!-- <p class="text-xs text-gray-500 mt-1">
-          You can paste the full Google Sheets link; we’ll grab the ID between <code>/d/</code> and <code>/edit</code>.
-        </p> -->
         <p id="sheetDetected" class="text-xs mt-1 hidden"></p>
       </div>
 
@@ -32,7 +29,7 @@
 
       <!-- Required Field -->
       <div class="md:col-span-2">
-        <label class="block text-sm font-medium mb-1">Field/ Job Position *</label>
+        <label class="block text-sm font-medium mb-1">Field / Job Position *</label>
         <input required name="field" type="text" placeholder="e.g., Digital Marketing"
                class="w-full border rounded-lg p-2"/>
       </div>
@@ -49,7 +46,6 @@
       <div>
         <label class="block text-sm font-medium mb-1">Sort By</label>
         <select name="sort_by" class="w-full border rounded-lg p-2">
-          <option value="day">Default (Last 24 hours)</option>
           <option value="day">Last 24 hours</option>
           <option value="week">Last 1 week</option>
           <option value="month">Last 1 month</option>
@@ -67,37 +63,26 @@
         </select>
       </div>
 
-      <!-- Job Type (multi-select) -->
-      <div class="md:col-span-2">
-        <label class="block text-sm font-medium mb-1">Job Type (multi-select)</label>
-        <div class="grid grid-cols-2 gap-2">
-          <label class="flex items-center gap-2"><input type="checkbox" name="job_types" value="fulltime"> Full-time</label>
-          <label class="flex items-center gap-2"><input type="checkbox" name="job_types" value="parttime"> Part-time</label>
-          <label class="flex items-center gap-2"><input type="checkbox" name="job_types" value="contract"> Contract</label>
-          <label class="flex items-center gap-2"><input type="checkbox" name="job_types" value="internship"> Internship</label>
-          <label class="flex items-center gap-2"><input type="checkbox" name="job_types" value="temporary"> Temporary</label>
-          <label class="flex items-center gap-2"><input type="checkbox" name="job_types" value="volunteer"> Volunteer</label>
-        </div>
-      </div>
-
-      <!-- Experience Level (multi-select) -->
-      <div class="md:col-span-2">
-        <label class="block text-sm font-medium mb-1">Experience Level (multi-select)</label>
-        <div class="grid grid-cols-2 gap-2">
-          <label class="flex items-center gap-2"><input type="checkbox" name="exp_levels" value="internship"> Internship</label>
-          <label class="flex items-center gap-2"><input type="checkbox" name="exp_levels" value="entry_level"> Entry level</label>
-          <label class="flex items-center gap-2"><input type="checkbox" name="exp_levels" value="associate"> Associate</label>
-          <label class="flex items-center gap-2"><input type="checkbox" name="exp_levels" value="mid_senior_level"> Mid–Senior</label>
-          <label class="flex items-center gap-2"><input type="checkbox" name="exp_levels" value="director"> Director</label>
-          <label class="flex items-center gap-2"><input type="checkbox" name="exp_levels" value="executive"> Executive</label>
-        </div>
-      </div>
-
-      <!-- Total Records -->
+      <!-- Experience Level (single select) -->
       <div>
-        <label class="block text-sm font-medium mb-1">Total Records</label>
-        <input name="total_records" type="number" min="1" max="500" value="50"
+        <label class="block text-sm font-medium mb-1">Experience Level</label>
+        <select name="exp_levels" class="w-full border rounded-lg p-2">
+          <option value="">Any</option>
+          <option value="internship">Internship</option>
+          <option value="entry_level">Entry level</option>
+          <option value="associate">Associate</option>
+          <option value="mid_senior_level">Mid–Senior</option>
+          <option value="director">Director</option>
+          <option value="executive">Executive</option>
+        </select>
+      </div>
+
+      <!-- Number of jobs (Apify rows) -->
+      <div>
+        <label class="block text-sm font-medium mb-1">Number of jobs (Apify rows)</label>
+        <input id="rowsInput" name="total_records" type="number" min="1" max="1000" value="50"
                class="w-full border rounded-lg p-2"/>
+        <p class="text-xs text-gray-500 mt-1">Sent as the exact <code>rows</code> value to Apify.</p>
       </div>
 
       <div class="md:col-span-2">
@@ -128,20 +113,16 @@
   </div>
 
   <script>
-    // --- Spreadsheet ID extraction helpers (frontend-only; backend unchanged) ---
+    // --- Spreadsheet ID extraction helpers ---
     function extractSpreadsheetId(input) {
       const s = String(input || "").trim();
-
-      // Looks like a Drive ID already?
       if (/^[a-zA-Z0-9-_]{20,}$/.test(s)) return s;
-
       const patterns = [
-        /https?:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/, // standard Sheets URL
-        /https?:\/\/docs\.google\.com\/.*\/d\/([a-zA-Z0-9-_]+)/,           // any docs host with /d/<id>
-        /[\?&]id=([a-zA-Z0-9-_]+)/,                                        // .../open?id=<id>
-        /https?:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9-_]+)/         // Drive file link
+        /https?:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/,
+        /https?:\/\/docs\.google\.com\/.*\/d\/([a-zA-Z0-9-_]+)/,
+        /[\?&]id=([a-zA-Z0-9-_]+)/,
+        /https?:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9-_]+)/
       ];
-
       for (const re of patterns) {
         const m = s.match(re);
         if (m && m[1]) return m[1];
@@ -171,7 +152,6 @@
       sheetInput.classList.remove('border-red-500');
     }
 
-    // Extract on blur and replace input with the clean ID (so backend receives just the ID)
     sheetInput.addEventListener('blur', () => {
       const id = extractSpreadsheetId(sheetInput.value);
       showDetected(id);
@@ -181,10 +161,10 @@
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
 
-      // Force-extract right before sending (in case user didn't blur the field)
+      // Force-extract right before sending
       const finalId = extractSpreadsheetId(sheetInput.value);
       if (!finalId) {
-        showDetected(""); // show error
+        showDetected("");
         sheetInput.focus();
         return;
       }
@@ -193,17 +173,17 @@
       const formData = new FormData(this);
       const params = {};
       formData.forEach((value, key) => {
-        if (key === 'job_types' || key === 'exp_levels') return; // collect below
         const v = String(value || '').trim();
-        if (v) params[key] = v;
+        if (v !== '') params[key] = v;
       });
 
-      // Collect multi-select checkboxes into arrays
-      params.job_types = Array.from(document.querySelectorAll('input[name="job_types"]:checked')).map(i => i.value);
-      params.exp_levels = Array.from(document.querySelectorAll('input[name="exp_levels"]:checked')).map(i => i.value);
-
-      // Coerce numeric fields
-      if (params.total_records) params.total_records = Number(params.total_records);
+      // Apify exact rows:
+      // Use the user's number for BOTH total_records and per_request_count,
+      // so the backend can set Apify's `rows` to that single value.
+      const rowsVal = Number(params.total_records || 0) || 50;
+      params.total_records = rowsVal;      // target saved rows
+      params.per_request_count = rowsVal;  // tell backend to pass rows directly
+      params.apify_exact = true;           // optional flag (safe if backend ignores)
 
       resultEl.innerText = "Fetching jobs...";
       submitBtn.disabled = true;
@@ -211,7 +191,7 @@
       jobsBody.innerHTML = '';
 
       try {
-        const res = await fetch('https://linkedin-scrapper-backend-6xzs.onrender.com/api/fetch-jobs', {
+        const res = await fetch('http://localhost:8086/api/fetch-jobs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(params),
@@ -220,20 +200,26 @@
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.message || `HTTP ${res.status}`);
 
-        resultEl.innerText = `✅ ${data.rowCount ?? data.jobs?.length ?? 0} jobs fetched & saved!`;
+        // Prefer 'saved' (Apify backend), then 'rowCount', then jobs length
+        const savedCount = (typeof data.saved === 'number')
+          ? data.saved
+          : (typeof data.rowCount === 'number' ? data.rowCount : (data.jobs?.length || 0));
 
+        resultEl.innerText = `✅ ${savedCount} jobs fetched & saved!`;
+
+        // Show a small preview table if backend returns jobs
         const jobs = (data.jobs || []).slice(0, 20);
         if (jobs.length) {
           jobsBody.innerHTML = jobs.map(j => `
             <tr class="border-t">
               <td class="p-2">
-                <a href="${j.job_link || '#'}" target="_blank" class="text-blue-600 underline">
-                  ${j.job_position || '—'}
+                <a href="${j.job_link || j.jobUrl || '#'}" target="_blank" class="text-blue-600 underline">
+                  ${j.job_position || j.title || '—'}
                 </a>
               </td>
-              <td class="p-2">${j.company_name || '—'}</td>
-              <td class="p-2">${j.job_location || '—'}</td>
-              <td class="p-2">${j.job_posting_date || '—'}</td>
+              <td class="p-2">${j.company_name || j.companyName || '—'}</td>
+              <td class="p-2">${j.job_location || j.location || '—'}</td>
+              <td class="p-2">${j.job_posting_date || j.postedTime || j.publishedAt || '—'}</td>
             </tr>
           `).join('');
           tableWrap.classList.remove('hidden');
@@ -247,4 +233,3 @@
   </script>
 </body>
 </html>
-
