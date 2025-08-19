@@ -191,7 +191,7 @@
       jobsBody.innerHTML = '';
 
       try {
-        const res = await fetch('http://localhost:8086/api/fetch-jobs', {
+        const res = await fetch('https://linkedin-scrapper-backend-6xzs.onrender.com/api/fetch-jobs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(params),
@@ -233,3 +233,4 @@
   </script>
 </body>
 </html>
+
