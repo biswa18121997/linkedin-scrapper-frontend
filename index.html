@@ -3,14 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>LinkedIn Jobs Fetcher</title>
+  <title>LinkedIn → Google Sheets (Bright Data)</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
-  <div class="bg-white shadow-lg rounded-xl p-6 w-full max-w-2xl">
-    <h1 class="text-2xl font-bold text-center mb-4">Fetch LinkedIn Jobs</h1>
+<div class="bg-white shadow-lg rounded-xl p-6 w-full max-w-3xl">
+    <h1 class="text-2xl font-bold text-center mb-2">LinkedIn Jobs → Google Sheets</h1>
+    <p class="text-sm text-gray-600 text-center mb-6">
+      Bright Data two-step: trigger → snapshot → fetch & append (Sheet1)
+    </p>
 
-    <form id="jobForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <form id="triggerForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <!-- Google Sheet URL or ID -->
       <div class="md:col-span-2">
         <label class="block text-sm font-medium mb-1">Google Sheet (URL or ID) *</label>
@@ -20,217 +23,329 @@
         <p id="sheetDetected" class="text-xs mt-1 hidden"></p>
       </div>
 
-      <!-- (Optional) Sheet Name -->
-      <div>
-        <label class="block text-sm font-medium mb-1">Sheet Name (tab)</label>
-        <input name="sheet_name" type="text" placeholder="Jobs" value="Sheet1"
-               class="w-full border rounded-lg p-2"/>
-      </div>
-
-      <!-- Required Field -->
+      <!-- Keyword -->
       <div class="md:col-span-2">
-        <label class="block text-sm font-medium mb-1">Field / Job Position *</label>
-        <input required name="field" type="text" placeholder="e.g., Digital Marketing"
+        <label class="block text-sm font-medium mb-1">Keyword *</label>
+        <input required name="keyword" type="text" placeholder="e.g., Data Analyst"
                class="w-full border rounded-lg p-2"/>
       </div>
 
-      <!-- Location -->
+      <!-- Country -->
       <div>
-        <label class="block text-sm font-medium mb-1">Location</label>
-        <input name="location" type="text" value="United States of America"
-               placeholder="e.g., India or United States of America"
-               class="w-full border rounded-lg p-2"/>
-      </div>
-
-      <!-- Sort By -->
-      <div>
-        <label class="block text-sm font-medium mb-1">Sort By</label>
-        <select name="sort_by" class="w-full border rounded-lg p-2">
-          <option value="day">Last 24 hours</option>
-          <option value="week">Last 1 week</option>
-          <option value="month">Last 1 month</option>
+        <label class="block text-sm font-medium mb-1">Country *</label>
+        <select name="country" class="w-full border rounded-lg p-2" required>
+          <option value="US" selected>United States (US)</option>
+          <option value="IN">India (IN)</option>
+          <option value="GB">United Kingdom (GB)</option>
+          <option value="CA">Canada (CA)</option>
+          <option value="AU">Australia (AU)</option>
+          <option value="FR">France (FR)</option>
+          <option value="DE">Germany (DE)</option>
         </select>
       </div>
 
-      <!-- Work Type -->
+      <!-- Time Range -->
       <div>
-        <label class="block text-sm font-medium mb-1">Work Type</label>
-        <select name="work_type" class="w-full border rounded-lg p-2">
+        <label class="block text-sm font-medium mb-1">Time Range</label>
+        <select name="time_range" class="w-full border rounded-lg p-2">
+          <option value="Past 24 hours" selected>Past 24 hours</option>
+          <option value="Past week">Past week</option>
+          <option value="Past month">Past month</option>
+        </select>
+      </div>
+
+      <!-- Job Type -->
+      <div>
+        <label class="block text-sm font-medium mb-1">Job Type</label>
+        <select name="job_type" class="w-full border rounded-lg p-2">
           <option value="">Any</option>
-          <option value="onsite">onsite</option>
-          <option value="remote">remote</option>
-          <option value="hybrid">hybrid</option>
+          <option value="Full-time">Full-time</option>
+          <option value="Part-time">Part-time</option>
+          <option value="Contract">Contract</option>
+          <option value="Temporary">Temporary</option>
+          <option value="Internship">Internship</option>
         </select>
       </div>
 
-      <!-- Experience Level (single select) -->
+      <!-- Experience Level -->
       <div>
         <label class="block text-sm font-medium mb-1">Experience Level</label>
-        <select name="exp_levels" class="w-full border rounded-lg p-2">
+        <select name="experience_level" class="w-full border rounded-lg p-2">
           <option value="">Any</option>
-          <option value="internship">Internship</option>
-          <option value="entry_level">Entry level</option>
-          <option value="associate">Associate</option>
-          <option value="mid_senior_level">Mid–Senior</option>
-          <option value="director">Director</option>
-          <option value="executive">Executive</option>
+          <option value="Internship">Internship</option>
+          <option value="Entry level">Entry level</option>
+          <option value="Associate">Associate</option>
+          <option value="Mid-Senior level">Mid-Senior level</option>
+          <option value="Director">Director</option>
+          <option value="Executive">Executive</option>
         </select>
       </div>
 
-      <!-- Number of jobs (Apify rows) -->
+      <!-- Remote -->
       <div>
-        <label class="block text-sm font-medium mb-1">Number of jobs (Apify rows)</label>
-        <input id="rowsInput" name="total_records" type="number" min="1" max="1000" value="50"
+        <label class="block text-sm font-medium mb-1">Remote</label>
+        <select name="remote" class="w-full border rounded-lg p-2">
+          <option value="">Any</option>
+          <option value="On-site">On-site</option>
+          <option value="Remote">Remote</option>
+          <option value="Hybrid">Hybrid</option>
+        </select>
+      </div>
+
+      <!-- Count -->
+      <div>
+        <label class="block text-sm font-medium mb-1">Count (max rows)</label>
+        <input id="countInput" name="count" type="number" min="1" max="100" value="25"
                class="w-full border rounded-lg p-2"/>
-        <p class="text-xs text-gray-500 mt-1">Sent as the exact <code>rows</code> value to Apify.</p>
       </div>
 
       <div class="md:col-span-2">
-        <button id="submitBtn" type="submit"
-                class="bg-blue-500 text-white py-2 px-4 rounded-lg w-full hover:bg-blue-600 disabled:opacity-60">
-          Fetch & Save
+        <button id="triggerBtn" type="submit"
+                class="bg-blue-600 text-white py-2 px-4 rounded-lg w-full hover:bg-blue-700 disabled:opacity-60">
+          1) Trigger Bright Data (get snapshot_id)
         </button>
       </div>
     </form>
 
+    <!-- Snapshot + results/preview remain as in your code -->
+    <div id="snapshotBox" class="mt-6 hidden">
+      <div class="rounded-lg border p-4 bg-gray-50">
+        <div class="flex items-center justify-between gap-3">
+          <div class="text-sm">
+            <div class="font-semibold">Snapshot ID</div>
+            <code id="snapshotId" class="text-xs"></code>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="checkBtn" class="px-3 py-2 rounded-md bg-gray-200 hover:bg-gray-300 text-sm">
+              Check parts status
+            </button>
+            <button id="fetchBtn" class="px-3 py-2 rounded-md bg-green-600 hover:bg-green-700 text-white text-sm">
+              2) Fetch & Append to Sheet1
+            </button>
+          </div>
+        </div>
+        <p id="statusMsg" class="text-xs text-gray-600 mt-2"></p>
+      </div>
+    </div>
+
     <div id="result" class="mt-4 text-sm text-gray-700"></div>
 
-    <div id="tableWrap" class="mt-4 hidden">
-      <div class="overflow-auto border rounded-lg">
+    <div id="previewWrap" class="mt-4 hidden">
+      <div class="border rounded-lg overflow-hidden">
+        <div class="bg-gray-50 px-3 py-2 font-semibold">Preview (first 10 rows appended)</div>
         <table class="min-w-full text-sm">
           <thead class="bg-gray-50">
             <tr>
               <th class="text-left p-2">Position</th>
               <th class="text-left p-2">Company</th>
               <th class="text-left p-2">Location</th>
-              <th class="text-left p-2">Posted</th>
             </tr>
           </thead>
-          <tbody id="jobsBody"></tbody>
+          <tbody id="previewBody"></tbody>
         </table>
       </div>
     </div>
   </div>
 
   <script>
-    // --- Spreadsheet ID extraction helpers ---
-    function extractSpreadsheetId(input) {
-      const s = String(input || "").trim();
-      if (/^[a-zA-Z0-9-_]{20,}$/.test(s)) return s;
-      const patterns = [
-        /https?:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/,
-        /https?:\/\/docs\.google\.com\/.*\/d\/([a-zA-Z0-9-_]+)/,
-        /[\?&]id=([a-zA-Z0-9-_]+)/,
-        /https?:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9-_]+)/
-      ];
-      for (const re of patterns) {
-        const m = s.match(re);
-        if (m && m[1]) return m[1];
-      }
-      return "";
-    }
+  // ---------- Helpers ----------
+  const API_BASE = 'http://localhost:8085';
 
-    const form = document.getElementById('jobForm');
-    const sheetInput = document.getElementById('sheetInput');
+  function extractSpreadsheetId(input) {
+    const s = String(input || "").trim();
+    if (/^[a-zA-Z0-9-_]{20,}$/.test(s)) return s;
+    const patterns = [
+      /https?:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/,
+      /https?:\/\/docs\.google\.com\/.*\/d\/([a-zA-Z0-9-_]+)/,
+      /[\?&]id=([a-zA-Z0-9-_]+)/,
+      /https?:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9-_]+)/,
+    ];
+    for (const re of patterns) {
+      const m = s.match(re);
+      if (m && m[1]) return m[1];
+    }
+    return "";
+  }
+
+  function showDetected(id) {
     const sheetDetected = document.getElementById('sheetDetected');
-    const resultEl = document.getElementById('result');
-    const tableWrap = document.getElementById('tableWrap');
-    const jobsBody = document.getElementById('jobsBody');
-    const submitBtn = document.getElementById('submitBtn');
-
-    function showDetected(id) {
-      if (!id) {
-        sheetDetected.textContent = "Invalid Google Sheets URL or ID.";
-        sheetDetected.className = "text-xs mt-1 text-red-600";
-        sheetDetected.classList.remove('hidden');
-        sheetInput.classList.add('border-red-500');
-        return;
-      }
-      sheetDetected.innerHTML = `Detected Sheet ID: <code>${id}</code>`;
-      sheetDetected.className = "text-xs mt-1 text-green-700";
+    const sheetInput = document.getElementById('sheetInput');
+    if (!id) {
+      sheetDetected.textContent = "Invalid Google Sheets URL or ID.";
+      sheetDetected.className = "text-xs mt-1 text-red-600";
       sheetDetected.classList.remove('hidden');
-      sheetInput.classList.remove('border-red-500');
+      sheetInput.classList.add('border-red-500');
+      return;
+    }
+    sheetDetected.innerHTML = `Detected Sheet ID: <code>${id}</code>`;
+    sheetDetected.className = "text-xs mt-1 text-green-700";
+    sheetDetected.classList.remove('hidden');
+    sheetInput.classList.remove('border-red-500');
+  }
+
+  function rowHTML(j) {
+    const url = j['Job Url'] || j.jobUrl || j.url || '#';
+    const title = j['Title'] || j.title || '—';
+    const company = j['Company Name'] || j.companyName || j.company || '—';
+    const location = j['Location'] || j.location || '—';
+    return `
+      <tr class="border-t">
+        <td class="p-2"><a href="${url}" target="_blank" class="text-blue-600 underline">${title}</a></td>
+        <td class="p-2">${company}</td>
+        <td class="p-2">${location}</td>
+      </tr>`;
+  }
+
+  // ---------- Elements ----------
+  const triggerForm  = document.getElementById('triggerForm');
+  const sheetInput   = document.getElementById('sheetInput');
+  const triggerBtn   = document.getElementById('triggerBtn');
+  const checkBtn     = document.getElementById('checkBtn');
+  const fetchBtn     = document.getElementById('fetchBtn');
+  const statusMsg    = document.getElementById('statusMsg');
+  const snapshotBox  = document.getElementById('snapshotBox');
+  const snapshotIdEl = document.getElementById('snapshotId');
+  const resultEl     = document.getElementById('result');
+  const previewWrap  = document.getElementById('previewWrap');
+  const previewBody  = document.getElementById('previewBody');
+  const countInput   = document.getElementById('countInput'); // <-- correct id
+
+  sheetInput.addEventListener('blur', () => {
+    const id = extractSpreadsheetId(sheetInput.value);
+    showDetected(id);
+    if (id) sheetInput.value = id;
+  });
+
+  let currentSnapshotId = '';
+
+  // ---------- Step 1: Trigger ----------
+  triggerForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const finalId = extractSpreadsheetId(sheetInput.value);
+    if (!finalId) {
+      showDetected("");
+      sheetInput.focus();
+      return;
+    }
+    sheetInput.value = finalId;
+
+    // collect the 7 fields exactly as named in the form
+    const formData = new FormData(triggerForm);
+    const body = {};
+    formData.forEach((value, key) => {
+      const v = String(value || '').trim();
+      if (v !== '') body[key] = v;
+    });
+    // body now contains:
+    // { sheet_id, keyword, country, time_range, job_type, experience_level, remote, count }
+
+    resultEl.textContent = 'Triggering Bright Data…';
+    snapshotBox.classList.add('hidden');
+    previewWrap.classList.add('hidden');
+    previewBody.innerHTML = '';
+    triggerBtn.disabled = true;
+
+    try {
+      // Send ALL the fields your backend expects for trigger:
+      const res = await fetch(`${API_BASE}/api/fetch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sheet_id: body.sheet_id,
+          keyword: body.keyword,
+          country: body.country,
+          time_range: body.time_range,
+          job_type: body.job_type,
+          experience_level: body.experience_level,
+          remote: body.remote,
+          count: Number(body.count || 25)
+        })
+      });
+      const data = await res.json();
+      console.log(data)
+      if (!res.ok || !data.success) throw new Error(data.message || `HTTP ${res.status}`);
+
+      currentSnapshotId = data.snapshot_id;
+      snapshotIdEl.textContent = currentSnapshotId;
+      snapshotBox.classList.remove('hidden');
+      statusMsg.textContent = 'Snapshot created. You can check status or fetch now.';
+      resultEl.textContent = '✅ Triggered successfully.';
+    } catch (err) {
+      resultEl.textContent = `❌ Error: ${err.message}`;
+    } finally {
+      triggerBtn.disabled = false;
+    }
+  });
+
+  // ---------- Optional: Check parts ----------
+  checkBtn?.addEventListener('click', async () => {
+    if (!currentSnapshotId) return;
+    statusMsg.textContent = 'Checking parts status…';
+    checkBtn.disabled = true;
+    try {
+      const res = await fetch(`${API_BASE}/api/linkedin/parts?snapshot_id=${encodeURIComponent(currentSnapshotId)}`);
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || `HTTP ${res.status}`);
+      if (data.ready) {
+        statusMsg.textContent = `✅ Parts ready: ${data.total_parts}`;
+      } else {
+        statusMsg.textContent = `ℹ️ Snapshot not ready yet (0 parts). Try again in a moment.`;
+      }
+    } catch (err) {
+      statusMsg.textContent = `❌ Error: ${err.message}`;
+    } finally {
+      checkBtn.disabled = false;
+    }
+  });
+
+  // ---------- Step 2: Fetch & Append ----------
+  fetchBtn?.addEventListener('click', async () => {
+    if (!currentSnapshotId) return;
+    const sheetId = extractSpreadsheetId(sheetInput.value);
+    if (!sheetId) {
+      showDetected("");
+      sheetInput.focus();
+      return;
     }
 
-    sheetInput.addEventListener('blur', () => {
-      const id = extractSpreadsheetId(sheetInput.value);
-      showDetected(id);
-      if (id) sheetInput.value = id;
-    });
+    resultEl.textContent = 'Fetching available parts & appending…';
+    fetchBtn.disabled = true;
+    previewWrap.classList.add('hidden');
+    previewBody.innerHTML = '';
 
-    form.addEventListener('submit', async function (e) {
-      e.preventDefault();
-
-      // Force-extract right before sending
-      const finalId = extractSpreadsheetId(sheetInput.value);
-      if (!finalId) {
-        showDetected("");
-        sheetInput.focus();
-        return;
-      }
-      sheetInput.value = finalId;
-
-      const formData = new FormData(this);
-      const params = {};
-      formData.forEach((value, key) => {
-        const v = String(value || '').trim();
-        if (v !== '') params[key] = v;
+    try {
+      const limit = Math.max(1, Math.min(Number(countInput.value || 25), 100)); // use count
+      const res = await fetch(`${API_BASE}/api/fetch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          snapshot_id: currentSnapshotId,
+          sheet_id: sheetId,
+          limit,
+          poll_ms: 1000
+        })
       });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || `HTTP ${res.status}`);
 
-      // Apify exact rows:
-      // Use the user's number for BOTH total_records and per_request_count,
-      // so the backend can set Apify's `rows` to that single value.
-      const rowsVal = Number(params.total_records || 0) || 50;
-      params.total_records = rowsVal;      // target saved rows
-      params.per_request_count = rowsVal;  // tell backend to pass rows directly
-      params.apify_exact = true;           // optional flag (safe if backend ignores)
+      resultEl.textContent = `✅ Appended ${data.appended || 0} rows to Sheet1. (parts: ${data?.meta?.parts ?? 0})`;
 
-      resultEl.innerText = "Fetching jobs...";
-      submitBtn.disabled = true;
-      tableWrap.classList.add('hidden');
-      jobsBody.innerHTML = '';
-
-      try {
-        const res = await fetch('https://linkedin-scrapper-backend-6xzs.onrender.com/api/fetch-jobs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(params),
-        });
-
-        const data = await res.json();
-        if (!res.ok || !data.success) throw new Error(data.message || `HTTP ${res.status}`);
-
-        // Prefer 'saved' (Apify backend), then 'rowCount', then jobs length
-        const savedCount = (typeof data.saved === 'number')
-          ? data.saved
-          : (typeof data.rowCount === 'number' ? data.rowCount : (data.jobs?.length || 0));
-
-        resultEl.innerText = `✅ ${savedCount} jobs fetched & saved!`;
-
-        // Show a small preview table if backend returns jobs
-        const jobs = (data.jobs || []).slice(0, 20);
-        if (jobs.length) {
-          jobsBody.innerHTML = jobs.map(j => `
-            <tr class="border-t">
-              <td class="p-2">
-                <a href="${j.job_link || j.jobUrl || '#'}" target="_blank" class="text-blue-600 underline">
-                  ${j.job_position || j.title || '—'}
-                </a>
-              </td>
-              <td class="p-2">${j.company_name || j.companyName || '—'}</td>
-              <td class="p-2">${j.job_location || j.location || '—'}</td>
-              <td class="p-2">${j.job_posting_date || j.postedTime || j.publishedAt || '—'}</td>
-            </tr>
-          `).join('');
-          tableWrap.classList.remove('hidden');
-        }
-      } catch (err) {
-        resultEl.innerText = `❌ Error: ${err.message}`;
-      } finally {
-        submitBtn.disabled = false;
+      const rows = Array.isArray(data.preview) ? data.preview : [];
+      if (rows.length) {
+        previewBody.innerHTML = rows.map(rowHTML).join('');
+        previewWrap.classList.remove('hidden');
+      } else if (data.message) {
+        previewBody.innerHTML = `<tr><td class="p-2 text-gray-600" colspan="3">${data.message}</td></tr>`;
+        previewWrap.classList.remove('hidden');
       }
-    });
-  </script>
+    } catch (err) {
+      resultEl.textContent = `❌ Error: ${err.message}`;
+    } finally {
+      fetchBtn.disabled = false;
+    }
+  });
+</script>
+
 </body>
 </html>
-
