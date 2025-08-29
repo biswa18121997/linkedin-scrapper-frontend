@@ -1,351 +1,345 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>LinkedIn → Google Sheets (Bright Data)</title>
+  <title>Jobs → Google Sheets (Apify)</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
-<div class="bg-white shadow-lg rounded-xl p-6 w-full max-w-3xl">
-    <h1 class="text-2xl font-bold text-center mb-2">LinkedIn Jobs → Google Sheets</h1>
+<body class="bg-gray-100 min-h-screen py-10">
+  <div class="max-w-5xl mx-auto bg-white shadow-lg rounded-2xl p-6">
+    <h1 class="text-2xl font-bold text-center">Jobs → Google Sheets (Apify)</h1>
     <p class="text-sm text-gray-600 text-center mb-6">
-      Bright Data two-step: trigger → snapshot → fetch & append (Sheet1)
+      Fetch from LinkedIn, Indeed, Glassdoor (Apify actors) → append to Sheet1/Sheet2/Sheet3
     </p>
 
-    <form id="triggerForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <!-- Google Sheet URL or ID -->
-      <div class="md:col-span-2">
-        <label class="block text-sm font-medium mb-1">Google Sheet (URL or ID) *</label>
-        <input required id="sheetInput" name="sheet_id" type="text"
-               placeholder="Paste full URL or ID (e.g. https://docs.google.com/spreadsheets/d/1AbC.../edit)"
-               class="w-full border rounded-lg p-2"/>
-        <p id="sheetDetected" class="text-xs mt-1 hidden"></p>
+    <!-- Global config -->
+    <form id="fetchForm" class="space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium mb-1">Google Sheet (URL or ID) *</label>
+          <input id="sheetInput" name="sheet_id" type="text" required
+                 placeholder="Paste full URL or just the ID"
+                 class="w-full border rounded-lg p-2"/>
+          <p id="sheetDetected" class="text-xs mt-1 hidden"></p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-1">userID (will fill last column) *</label>
+          <input id="userIdInput" name="userID" type="text" required
+                 placeholder="e.g., avni@flashfirejobs.com"
+                 class="w-full border rounded-lg p-2"/>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-1">Limit per source</label>
+          <input id="limitInput" name="limit" type="number" min="1" max="500" value="100"
+                 class="w-full border rounded-lg p-2"/>
+        </div>
       </div>
 
-      <!-- Keyword -->
-      <div class="md:col-span-2">
-        <label class="block text-sm font-medium mb-1">Keyword *</label>
-        <input required name="keyword" type="text" placeholder="e.g., Data Analyst"
-               class="w-full border rounded-lg p-2"/>
+      <hr class="my-2"/>
+
+      <!-- Shared query (optional) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="md:col-span-3">
+          <label class="inline-flex items-center gap-2">
+            <input id="useShared" type="checkbox" class="h-4 w-4">
+            <span class="text-sm">Use shared query for all sources</span>
+          </label>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-1">Shared: Query</label>
+          <input id="sharedQuery" type="text" placeholder="e.g., Data Analyst"
+                 class="w-full border rounded-lg p-2" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Shared: Location</label>
+          <input id="sharedLocation" type="text" placeholder="e.g., United States"
+                 class="w-full border rounded-lg p-2" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Shared: Remote</label>
+          <select id="sharedRemote" class="w-full border rounded-lg p-2">
+            <option value="">Any</option>
+            <option value="Remote">Remote</option>
+            <option value="On-site">On-site</option>
+            <option value="Hybrid">Hybrid</option>
+          </select>
+        </div>
       </div>
 
-      <!-- Country -->
-      <div>
-        <label class="block text-sm font-medium mb-1">Country *</label>
-        <select name="country" class="w-full border rounded-lg p-2" required>
-          <option value="US" selected>United States (US)</option>
-          <option value="IN">India (IN)</option>
-          <option value="GB">United Kingdom (GB)</option>
-          <option value="CA">Canada (CA)</option>
-          <option value="AU">Australia (AU)</option>
-          <option value="FR">France (FR)</option>
-          <option value="DE">Germany (DE)</option>
-        </select>
-      </div>
-
-      <!-- Time Range -->
-      <div>
-        <label class="block text-sm font-medium mb-1">Time Range</label>
-        <select name="time_range" class="w-full border rounded-lg p-2">
-          <option value="Past 24 hours" selected>Past 24 hours</option>
-          <option value="Past week">Past week</option>
-          <option value="Past month">Past month</option>
-        </select>
-      </div>
-
-      <!-- Job Type -->
-      <div>
-        <label class="block text-sm font-medium mb-1">Job Type</label>
-        <select name="job_type" class="w-full border rounded-lg p-2">
-          <option value="">Any</option>
-          <option value="Full-time">Full-time</option>
-          <option value="Part-time">Part-time</option>
-          <option value="Contract">Contract</option>
-          <option value="Temporary">Temporary</option>
-          <option value="Internship">Internship</option>
-        </select>
-      </div>
-
-      <!-- Experience Level -->
-      <div>
-        <label class="block text-sm font-medium mb-1">Experience Level</label>
-        <select name="experience_level" class="w-full border rounded-lg p-2">
-          <option value="">Any</option>
-          <option value="Internship">Internship</option>
-          <option value="Entry level">Entry level</option>
-          <option value="Associate">Associate</option>
-          <option value="Mid-Senior level">Mid-Senior level</option>
-          <option value="Director">Director</option>
-          <option value="Executive">Executive</option>
-        </select>
-      </div>
-
-      <!-- Remote -->
-      <div>
-        <label class="block text-sm font-medium mb-1">Remote</label>
-        <select name="remote" class="w-full border rounded-lg p-2">
-          <option value="">Any</option>
-          <option value="On-site">On-site</option>
-          <option value="Remote">Remote</option>
-          <option value="Hybrid">Hybrid</option>
-        </select>
-      </div>
-
-      <!-- Count -->
-      <div>
-        <label class="block text-sm font-medium mb-1">Count (max rows)</label>
-        <input id="countInput" name="count" type="number" min="1" max="100" value="25"
-               class="w-full border rounded-lg p-2"/>
-      </div>
-
-      <div class="md:col-span-2">
-        <button id="triggerBtn" type="submit"
-                class="bg-blue-600 text-white py-2 px-4 rounded-lg w-full hover:bg-blue-700 disabled:opacity-60">
-          1) Trigger Bright Data (get snapshot_id)
-        </button>
-      </div>
-    </form>
-
-    <!-- Snapshot + results/preview remain as in your code -->
-    <div id="snapshotBox" class="mt-6 hidden">
-      <div class="rounded-lg border p-4 bg-gray-50">
-        <div class="flex items-center justify-between gap-3">
-          <div class="text-sm">
-            <div class="font-semibold">Snapshot ID</div>
-            <code id="snapshotId" class="text-xs"></code>
+      <!-- Per-source cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- LinkedIn -->
+        <div class="border rounded-xl p-4">
+          <div class="flex items-center justify-between">
+            <h2 class="font-semibold">LinkedIn → Sheet1</h2>
+            <label class="inline-flex items-center gap-2 text-sm">
+              <input id="linkedinEnable" type="checkbox" class="h-4 w-4" checked>
+              Enable
+            </label>
           </div>
-          <div class="flex items-center gap-2">
-            <button id="checkBtn" class="px-3 py-2 rounded-md bg-gray-200 hover:bg-gray-300 text-sm">
-              Check parts status
-            </button>
-            <button id="fetchBtn" class="px-3 py-2 rounded-md bg-green-600 hover:bg-green-700 text-white text-sm">
-              2) Fetch & Append to Sheet1
-            </button>
+          <div class="mt-3 space-y-2">
+            <input id="liQuery" class="w-full border rounded-lg p-2" placeholder="Query (e.g., Data Analyst)">
+            <input id="liLocation" class="w-full border rounded-lg p-2" placeholder="Location (e.g., United States)">
+            <select id="liRemote" class="w-full border rounded-lg p-2">
+              <option value="">Any</option>
+              <option value="Remote">Remote</option>
+              <option value="On-site">On-site</option>
+              <option value="Hybrid">Hybrid</option>
+            </select>
           </div>
         </div>
-        <p id="statusMsg" class="text-xs text-gray-600 mt-2"></p>
-      </div>
-    </div>
 
-    <div id="result" class="mt-4 text-sm text-gray-700"></div>
+        <!-- Indeed -->
+        <div class="border rounded-xl p-4">
+          <div class="flex items-center justify-between">
+            <h2 class="font-semibold">Indeed → Sheet2</h2>
+            <label class="inline-flex items-center gap-2 text-sm">
+              <input id="indeedEnable" type="checkbox" class="h-4 w-4" checked>
+              Enable
+            </label>
+          </div>
+          <div class="mt-3 space-y-2">
+            <input id="inQuery" class="w-full border rounded-lg p-2" placeholder="Query (e.g., Software Engineer)">
+            <input id="inLocation" class="w-full border rounded-lg p-2" placeholder="Location (e.g., United States)">
+            <select id="inRemote" class="w-full border rounded-lg p-2">
+              <option value="">Any</option>
+              <option value="Remote">Remote</option>
+              <option value="On-site">On-site</option>
+              <option value="Hybrid">Hybrid</option>
+            </select>
+          </div>
+        </div>
 
-    <div id="previewWrap" class="mt-4 hidden">
-      <div class="border rounded-lg overflow-hidden">
-        <div class="bg-gray-50 px-3 py-2 font-semibold">Preview (first 10 rows appended)</div>
-        <table class="min-w-full text-sm">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="text-left p-2">Position</th>
-              <th class="text-left p-2">Company</th>
-              <th class="text-left p-2">Location</th>
-            </tr>
-          </thead>
-          <tbody id="previewBody"></tbody>
-        </table>
+        <!-- Glassdoor -->
+        <div class="border rounded-xl p-4">
+          <div class="flex items-center justify-between">
+            <h2 class="font-semibold">Glassdoor → Sheet3</h2>
+            <label class="inline-flex items-center gap-2 text-sm">
+              <input id="glassdoorEnable" type="checkbox" class="h-4 w-4" checked>
+              Enable
+            </label>
+          </div>
+          <div class="mt-3 space-y-2">
+            <input id="gdQuery" class="w-full border rounded-lg p-2" placeholder="Query (e.g., Product Manager)">
+            <input id="gdLocation" class="w-full border rounded-lg p-2" placeholder="Location (e.g., United States)">
+            <select id="gdRemote" class="w-full border rounded-lg p-2">
+              <option value="">Any</option>
+              <option value="Remote">Remote</option>
+              <option value="On-site">On-site</option>
+              <option value="Hybrid">Hybrid</option>
+            </select>
+          </div>
+        </div>
       </div>
-    </div>
+
+      <button id="fetchBtn" type="submit"
+              class="bg-blue-600 text-white py-2 px-4 rounded-lg w-full hover:bg-blue-700 disabled:opacity-60">
+        Fetch from Apify & Append to Sheets
+      </button>
+    </form>
+
+    <!-- Results -->
+    <div id="result" class="mt-6 text-sm text-gray-700"></div>
+
+    <div id="previews" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4"></div>
   </div>
 
   <script>
-  // ---------- Helpers ----------
-  const API_BASE = 'http://localhost:8085';
+    // ===== Config =====
+    const API_BASE = 'http://localhost:8085'; // your Express server with /api/fetch
 
-  function extractSpreadsheetId(input) {
-    const s = String(input || "").trim();
-    if (/^[a-zA-Z0-9-_]{20,}$/.test(s)) return s;
-    const patterns = [
-      /https?:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/,
-      /https?:\/\/docs\.google\.com\/.*\/d\/([a-zA-Z0-9-_]+)/,
-      /[\?&]id=([a-zA-Z0-9-_]+)/,
-      /https?:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9-_]+)/,
-    ];
-    for (const re of patterns) {
-      const m = s.match(re);
-      if (m && m[1]) return m[1];
+    // ===== Helpers =====
+    function extractSpreadsheetId(input) {
+      const s = String(input || "").trim();
+      if (/^[a-zA-Z0-9-_]{20,}$/.test(s)) return s;
+      const patterns = [
+        /https?:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/,
+        /https?:\/\/docs\.google\.com\/.*\/d\/([a-zA-Z0-9-_]+)/,
+        /[\?&]id=([a-zA-Z0-9-_]+)/,
+        /https?:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9-_]+)/,
+      ];
+      for (const re of patterns) {
+        const m = s.match(re);
+        if (m && m[1]) return m[1];
+      }
+      return "";
     }
-    return "";
-  }
 
-  function showDetected(id) {
-    const sheetDetected = document.getElementById('sheetDetected');
-    const sheetInput = document.getElementById('sheetInput');
-    if (!id) {
-      sheetDetected.textContent = "Invalid Google Sheets URL or ID.";
-      sheetDetected.className = "text-xs mt-1 text-red-600";
-      sheetDetected.classList.remove('hidden');
-      sheetInput.classList.add('border-red-500');
-      return;
-    }
-    sheetDetected.innerHTML = `Detected Sheet ID: <code>${id}</code>`;
-    sheetDetected.className = "text-xs mt-1 text-green-700";
-    sheetDetected.classList.remove('hidden');
-    sheetInput.classList.remove('border-red-500');
-  }
-
-  function rowHTML(j) {
-    const url = j['Job Url'] || j.jobUrl || j.url || '#';
-    const title = j['Title'] || j.title || '—';
-    const company = j['Company Name'] || j.companyName || j.company || '—';
-    const location = j['Location'] || j.location || '—';
-    return `
-      <tr class="border-t">
-        <td class="p-2"><a href="${url}" target="_blank" class="text-blue-600 underline">${title}</a></td>
-        <td class="p-2">${company}</td>
-        <td class="p-2">${location}</td>
-      </tr>`;
-  }
-
-  // ---------- Elements ----------
-  const triggerForm  = document.getElementById('triggerForm');
-  const sheetInput   = document.getElementById('sheetInput');
-  const triggerBtn   = document.getElementById('triggerBtn');
-  const checkBtn     = document.getElementById('checkBtn');
-  const fetchBtn     = document.getElementById('fetchBtn');
-  const statusMsg    = document.getElementById('statusMsg');
-  const snapshotBox  = document.getElementById('snapshotBox');
-  const snapshotIdEl = document.getElementById('snapshotId');
-  const resultEl     = document.getElementById('result');
-  const previewWrap  = document.getElementById('previewWrap');
-  const previewBody  = document.getElementById('previewBody');
-  const countInput   = document.getElementById('countInput'); // <-- correct id
-
-  sheetInput.addEventListener('blur', () => {
-    const id = extractSpreadsheetId(sheetInput.value);
-    showDetected(id);
-    if (id) sheetInput.value = id;
-  });
-
-  let currentSnapshotId = '';
-
-  // ---------- Step 1: Trigger ----------
-  triggerForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const finalId = extractSpreadsheetId(sheetInput.value);
-    if (!finalId) {
-      showDetected("");
-      sheetInput.focus();
-      return;
-    }
-    sheetInput.value = finalId;
-
-    // collect the 7 fields exactly as named in the form
-    const formData = new FormData(triggerForm);
-    const body = {};
-    formData.forEach((value, key) => {
-      const v = String(value || '').trim();
-      if (v !== '') body[key] = v;
-    });
-    // body now contains:
-    // { sheet_id, keyword, country, time_range, job_type, experience_level, remote, count }
-
-    resultEl.textContent = 'Triggering Bright Data…';
-    snapshotBox.classList.add('hidden');
-    previewWrap.classList.add('hidden');
-    previewBody.innerHTML = '';
-    triggerBtn.disabled = true;
-
-    try {
-      // Send ALL the fields your backend expects for trigger:
-      const res = await fetch(`${API_BASE}/api/fetch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sheet_id: body.sheet_id,
-          keyword: body.keyword,
-          country: body.country,
-          time_range: body.time_range,
-          job_type: body.job_type,
-          experience_level: body.experience_level,
-          remote: body.remote,
-          count: Number(body.count || 25)
-        })
-      });
-      const data = await res.json();
-      console.log(data)
-      if (!res.ok || !data.success) throw new Error(data.message || `HTTP ${res.status}`);
-
-      currentSnapshotId = data.snapshot_id;
-      snapshotIdEl.textContent = currentSnapshotId;
-      snapshotBox.classList.remove('hidden');
-      statusMsg.textContent = 'Snapshot created. You can check status or fetch now.';
-      resultEl.textContent = '✅ Triggered successfully.';
-    } catch (err) {
-      resultEl.textContent = `❌ Error: ${err.message}`;
-    } finally {
-      triggerBtn.disabled = false;
-    }
-  });
-
-  // ---------- Optional: Check parts ----------
-  checkBtn?.addEventListener('click', async () => {
-    if (!currentSnapshotId) return;
-    statusMsg.textContent = 'Checking parts status…';
-    checkBtn.disabled = true;
-    try {
-      const res = await fetch(`${API_BASE}/api/linkedin/parts?snapshot_id=${encodeURIComponent(currentSnapshotId)}`);
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.message || `HTTP ${res.status}`);
-      if (data.ready) {
-        statusMsg.textContent = `✅ Parts ready: ${data.total_parts}`;
+    function sheetDetectedUI(id) {
+      const el = document.getElementById('sheetDetected');
+      const input = document.getElementById('sheetInput');
+      if (!id) {
+        el.textContent = "Invalid Google Sheets URL or ID.";
+        el.className = "text-xs mt-1 text-red-600";
+        el.classList.remove('hidden');
+        input.classList.add('border-red-500');
       } else {
-        statusMsg.textContent = `ℹ️ Snapshot not ready yet (0 parts). Try again in a moment.`;
+        el.innerHTML = `Detected Sheet ID: <code>${id}</code>`;
+        el.className = "text-xs mt-1 text-green-700";
+        el.classList.remove('hidden');
+        input.classList.remove('border-red-500');
       }
-    } catch (err) {
-      statusMsg.textContent = `❌ Error: ${err.message}`;
-    } finally {
-      checkBtn.disabled = false;
-    }
-  });
-
-  // ---------- Step 2: Fetch & Append ----------
-  fetchBtn?.addEventListener('click', async () => {
-    if (!currentSnapshotId) return;
-    const sheetId = extractSpreadsheetId(sheetInput.value);
-    if (!sheetId) {
-      showDetected("");
-      sheetInput.focus();
-      return;
     }
 
-    resultEl.textContent = 'Fetching available parts & appending…';
-    fetchBtn.disabled = true;
-    previewWrap.classList.add('hidden');
-    previewBody.innerHTML = '';
+    function previewTable(title, rows) {
+      const safeRows = Array.isArray(rows) ? rows : [];
+      const first = safeRows[0] || {};
+      const cols = Object.keys(first).slice(0, 5); // show a few columns
 
-    try {
-      const limit = Math.max(1, Math.min(Number(countInput.value || 25), 100)); // use count
-      const res = await fetch(`${API_BASE}/api/fetch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          snapshot_id: currentSnapshotId,
-          sheet_id: sheetId,
-          limit,
-          poll_ms: 1000
-        })
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.message || `HTTP ${res.status}`);
+      const thead = cols.map(c => `<th class="text-left p-2">${c}</th>`).join('');
+      const tbody = safeRows.slice(0, 5).map(r => {
+        const tds = cols.map(c => `<td class="p-2">${r[c] ?? ''}</td>`).join('');
+        return `<tr class="border-t">${tds}</tr>`;
+      }).join('') || `<tr><td class="p-2 text-gray-500" colspan="5">No preview</td></tr>`;
 
-      resultEl.textContent = `✅ Appended ${data.appended || 0} rows to Sheet1. (parts: ${data?.meta?.parts ?? 0})`;
+      return `
+        <div class="border rounded-xl overflow-hidden">
+          <div class="bg-gray-50 px-3 py-2 font-semibold">${title}</div>
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50"><tr>${thead}</tr></thead>
+            <tbody>${tbody}</tbody>
+          </table>
+        </div>`;
+    }
 
-      const rows = Array.isArray(data.preview) ? data.preview : [];
-      if (rows.length) {
-        previewBody.innerHTML = rows.map(rowHTML).join('');
-        previewWrap.classList.remove('hidden');
-      } else if (data.message) {
-        previewBody.innerHTML = `<tr><td class="p-2 text-gray-600" colspan="3">${data.message}</td></tr>`;
-        previewWrap.classList.remove('hidden');
+    function buildSourceInput(enabled, shared, q, loc, remote) {
+    if (!enabled) return null;
+
+    // Extract raw values whether 'shared' or element refs were passed
+    const queryVal = shared ? (q || '').trim() : String(q?.value || '').trim();
+    const locVal   = shared ? (loc || '').trim() : String(loc?.value || '').trim();
+    const remoteVal= shared ? (remote || '').trim() : String(remote?.value || '').trim();
+
+    const obj = {};
+    // ensure both query and keyword are sent
+    obj.query = queryVal || 'Software Engineer';
+    obj.keyword = obj.query;
+
+    // default country/location = United States
+    obj.location = locVal || 'United States';
+    obj.country  = 'US';
+
+    if (remoteVal) obj.remote = remoteVal;
+
+    return obj;
+  }
+    // ===== DOM =====
+    const form = document.getElementById('fetchForm');
+    const sheetInput = document.getElementById('sheetInput');
+    const useShared = document.getElementById('useShared');
+    const sharedQuery = document.getElementById('sharedQuery');
+    const sharedLocation = document.getElementById('sharedLocation');
+    const sharedRemote = document.getElementById('sharedRemote');
+    const liEnable = document.getElementById('linkedinEnable');
+    const inEnable = document.getElementById('indeedEnable');
+    const gdEnable = document.getElementById('glassdoorEnable');
+    const liQuery = document.getElementById('liQuery');
+    const liLocation = document.getElementById('liLocation');
+    const liRemote = document.getElementById('liRemote');
+    const inQuery = document.getElementById('inQuery');
+    const inLocation = document.getElementById('inLocation');
+    const inRemote = document.getElementById('inRemote');
+    const gdQuery = document.getElementById('gdQuery');
+    const gdLocation = document.getElementById('gdLocation');
+    const gdRemote = document.getElementById('gdRemote');
+    const userIdInput = document.getElementById('userIdInput');
+    const limitInput = document.getElementById('limitInput');
+    const resultEl = document.getElementById('result');
+    const previews = document.getElementById('previews');
+
+    sheetInput.addEventListener('blur', () => {
+      const id = extractSpreadsheetId(sheetInput.value);
+      sheetDetectedUI(id);
+      if (id) sheetInput.value = id;
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      previews.innerHTML = '';
+      resultEl.textContent = '';
+
+      const sheetId = extractSpreadsheetId(sheetInput.value);
+      if (!sheetId) {
+        sheetDetectedUI('');
+        sheetInput.focus();
+        return;
       }
-    } catch (err) {
-      resultEl.textContent = `❌ Error: ${err.message}`;
-    } finally {
-      fetchBtn.disabled = false;
-    }
-  });
-</script>
+      const userID = String(userIdInput.value || '').trim();
+      if (!userID) {
+        resultEl.textContent = 'Please enter userID.';
+        return;
+      }
+      const limit = Math.max(1, Math.min(Number(limitInput.value || 100), 500));
 
+      const shared = useShared.checked;
+      const liInput = buildSourceInput(
+        liEnable.checked,
+        shared,
+        shared ? sharedQuery.value : liQuery,
+        shared ? sharedLocation.value : liLocation,
+        shared ? sharedRemote.value : liRemote
+      );
+      const inInput = buildSourceInput(
+        inEnable.checked,
+        shared,
+        shared ? sharedQuery.value : inQuery,
+        shared ? sharedLocation.value : inLocation,
+        shared ? sharedRemote.value : inRemote
+      );
+      const gdInput = buildSourceInput(
+        gdEnable.checked,
+        shared,
+        shared ? sharedQuery.value : gdQuery,
+        shared ? sharedLocation.value : gdLocation,
+        shared ? sharedRemote.value : gdRemote
+      );
+
+      // If a source is disabled, send an empty object so backend can skip gracefully
+      const body = {
+        sheet_id: sheetId,
+        userID,
+        limit,
+        linkedinInput: liInput || {},
+        indeedInput: inInput || {},
+        glassdoorInput: gdInput || {},
+      };
+
+      try {
+        resultEl.textContent = 'Fetching from Apify actors and appending to Google Sheets…';
+        const res = await fetch(`${API_BASE}/api/fetch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || `HTTP ${res.status}`);
+
+        // Show per-source summary + tiny previews
+        const li = data.per_source?.linkedin || {};
+        const ind = data.per_source?.indeed || {};
+        const gd = data.per_source?.glassdoor || {};
+
+        resultEl.innerHTML = `
+          <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+            <div><strong>LinkedIn:</strong> ${li.appended ?? 0} appended (of ${li.total_found ?? 0})</div>
+            <div><strong>Indeed:</strong> ${ind.appended ?? 0} appended (of ${ind.total_found ?? 0})</div>
+            <div><strong>Glassdoor:</strong> ${gd.appended ?? 0} appended (of ${gd.total_found ?? 0})</div>
+          </div>`;
+
+        const cards = [];
+        cards.push(previewTable('LinkedIn preview', li.preview || []));
+        cards.push(previewTable('Indeed preview', ind.preview || []));
+        cards.push(previewTable('Glassdoor preview', gd.preview || []));
+        previews.innerHTML = cards.join('');
+
+      } catch (err) {
+        resultEl.innerHTML = `<div class="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700">❌ ${err.message}</div>`;
+      }
+    });
+  </script>
 </body>
 </html>
